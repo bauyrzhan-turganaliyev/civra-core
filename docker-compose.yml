@@ -1,0 +1,41 @@
+services:
+  gateway:
+    build:
+      context: .
+      args:
+        SERVICE: gateway
+    environment:
+      PORT: "8080"
+      KINGDOM_URL: "http://kingdom:8081"
+      ECONOMY_URL: "http://economy:8082"
+      MARKET_URL: "http://market:8083"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kingdom
+      - economy
+      - market
+
+  kingdom:
+    build:
+      context: .
+      args:
+        SERVICE: kingdom
+    environment:
+      PORT: "8081"
+
+  economy:
+    build:
+      context: .
+      args:
+        SERVICE: economy
+    environment:
+      PORT: "8082"
+
+  market:
+    build:
+      context: .
+      args:
+        SERVICE: market
+    environment:
+      PORT: "8083"
