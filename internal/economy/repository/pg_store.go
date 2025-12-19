@@ -4,16 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PgStore struct {
 	db *pgxpool.Pool
-}
-
-// GetPersonalInventory implements InventoryQueryStore.
-func (s *PgStore) GetPersonalInventory(ctx context.Context, userID string) (map[string]int, error) {
-	panic("unimplemented")
 }
 
 func NewPgStore(db *pgxpool.Pool) *PgStore {
@@ -75,6 +71,19 @@ func (s *PgStore) Gather(
 		toPersonal = amount
 	}
 
+	if toPersonal > 0 {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO personal_inventory (user_id, resource, quantity)
+		 VALUES ($1,$2,$3)
+		 ON CONFLICT (user_id, resource)
+		 DO UPDATE SET quantity = personal_inventory.quantity + EXCLUDED.quantity`,
+			userID, resource, toPersonal,
+		)
+		if err != nil {
+			return
+		}
+	}
+
 	// 2) обновляем quota + kingdom inventory
 	if toKingdom > 0 {
 		progress += toKingdom
@@ -103,4 +112,53 @@ func (s *PgStore) Gather(
 
 	err = tx.Commit(ctx)
 	return
+}
+
+func (s *PgStore) BuyOrder(
+	ctx context.Context,
+	orderID uuid.UUID,
+	buyerID string,
+) error {
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// 1) lock order
+	var resource string
+	var quantity int
+	err = tx.QueryRow(ctx,
+		`SELECT resource, quantity FROM market_orders
+		 WHERE id=$1
+		 FOR UPDATE`,
+		orderID,
+	).Scan(&resource, &quantity)
+	if err != nil {
+		return err
+	}
+
+	// 2) give resource to buyer
+	_, err = tx.Exec(ctx,
+		`INSERT INTO personal_inventory (user_id, resource, quantity)
+		 VALUES ($1,$2,$3)
+		 ON CONFLICT (user_id, resource)
+		 DO UPDATE SET quantity = personal_inventory.quantity + EXCLUDED.quantity`,
+		buyerID, resource, quantity,
+	)
+	if err != nil {
+		return err
+	}
+
+	// 3) delete order
+	_, err = tx.Exec(ctx,
+		`DELETE FROM market_orders WHERE id=$1`,
+		orderID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }

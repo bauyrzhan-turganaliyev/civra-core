@@ -33,6 +33,8 @@ func main() {
 	setupSvc := service.NewSetupService(mem)
 	setupH := handler.NewSetupHandler(setupSvc)
 
+	marketH := handler.NewMarketHandler(pg)
+
 	// ✅ register routes
 	mux := http.NewServeMux()
 
@@ -44,6 +46,9 @@ func main() {
 	mux.HandleFunc("/kingdom-inventory", queryH.Kingdom)
 	mux.HandleFunc("/personal-inventory", queryH.Personal)
 	mux.HandleFunc("/setup/demo", setupH.Demo)
+	mux.HandleFunc("/market/sell", marketH.Sell)
+	mux.HandleFunc("/market/buy", marketH.Buy)
+	mux.HandleFunc("/market/orders", marketH.Orders)
 
 	// ✅ then start server
 	addr := ":" + cfg.Port
