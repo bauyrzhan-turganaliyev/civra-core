@@ -1,0 +1,25 @@
+package repository
+
+import (
+	"context"
+	"time"
+)
+
+type GatherStore interface {
+	Gather(
+		ctx context.Context,
+		userID, kingdomID, resource string,
+		quotaRequired int,
+		now time.Time,
+		amount int,
+	) (toKingdom int, toPersonal int, progress int, err error)
+}
+
+type InventoryQueryStore interface {
+	GetKingdomInventory(ctx context.Context, kingdomID string) (map[string]int, error)
+	GetPersonalInventory(ctx context.Context, userID string) (map[string]int, error)
+}
+
+type SetupStore interface {
+	SetupDemo(ctx context.Context) error
+}
