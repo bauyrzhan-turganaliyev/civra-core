@@ -49,6 +49,7 @@ func main() {
 	mux.HandleFunc("/market/sell", marketH.Sell)
 	mux.HandleFunc("/market/buy", marketH.Buy)
 	mux.HandleFunc("/market/orders", marketH.Orders)
+	mux.HandleFunc("/market/cancel", marketH.Cancel)
 
 	// ✅ then start server
 	addr := ":" + cfg.Port

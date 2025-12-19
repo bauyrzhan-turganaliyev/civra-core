@@ -27,6 +27,11 @@ type SellReq struct {
 	Price     int    `json:"price"`
 }
 
+type CancelReq struct {
+	OrderID  string `json:"orderId"`
+	SellerID string `json:"sellerId"`
+}
+
 func (h *MarketHandler) Sell(w http.ResponseWriter, r *http.Request) {
 	var req SellReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -106,4 +111,25 @@ func (h *MarketHandler) Orders(w http.ResponseWriter, r *http.Request) {
 		"count":     len(orders),
 		"orders":    orders,
 	})
+}
+
+func (h *MarketHandler) Cancel(w http.ResponseWriter, r *http.Request) {
+	var req CancelReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.JSON(w, 400, map[string]string{"error": "invalid json"})
+		return
+	}
+
+	id, err := uuid.Parse(req.OrderID)
+	if err != nil {
+		httpx.JSON(w, 400, map[string]string{"error": "invalid orderId"})
+		return
+	}
+
+	if err := h.store.CancelSellOrder(r.Context(), id, req.SellerID); err != nil {
+		httpx.JSON(w, 404, map[string]string{"error": "order not found or not owner"})
+		return
+	}
+
+	httpx.JSON(w, 200, map[string]any{"ok": true})
 }
