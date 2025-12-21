@@ -29,6 +29,8 @@ type GatherResult struct {
 	QuotaDone          bool `json:"quotaDone"`
 	QuotaProgress      int  `json:"quotaProgress"`
 	QuotaRequired      int  `json:"quotaRequired"`
+	ToolBonusPct       int  `json:"toolBonusPct"`
+	ToolUsed           bool `json:"toolUsed"`
 }
 
 func quotaResourceFor(p entity.Profession) (entity.Resource, bool) {
@@ -68,7 +70,7 @@ func (s *GatherService) Gather(
 		return GatherResult{}, ErrInvalidResourceForProfession
 	}
 
-	toKingdom, toPersonal, progress, err := s.store.Gather(
+	toKingdom, toPersonal, progress, toolBonusPct, toolUsed, err := s.store.Gather(
 		ctx,
 		userID,
 		kingdomID,
@@ -88,5 +90,7 @@ func (s *GatherService) Gather(
 		QuotaDone:          progress >= quotaRequired,
 		QuotaProgress:      progress,
 		QuotaRequired:      quotaRequired,
+		ToolBonusPct:       toolBonusPct,
+		ToolUsed:           toolUsed,
 	}, nil
 }

@@ -12,7 +12,7 @@ type GatherStore interface {
 		quotaRequired int,
 		now time.Time,
 		amount int,
-	) (toKingdom int, toPersonal int, progress int, err error)
+	) (toKingdom, toPersonal, progress int, toolBonusPct int, toolUsed bool, err error)
 }
 
 type InventoryQueryStore interface {

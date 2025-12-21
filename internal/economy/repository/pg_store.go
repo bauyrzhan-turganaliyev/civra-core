@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -22,13 +23,57 @@ func (s *PgStore) Gather(
 	quotaRequired int,
 	now time.Time,
 	amount int,
-) (toKingdom, toPersonal, progress int, err error) {
+) (toKingdom, toPersonal, progress int, toolBonusPct int, toolUsed bool, err error) {
 
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	toolBonusPct = 0
+	toolUsed = false
+
+	// --- Tool bonus + durability (RPG) ---
+	var toolID string
+	var durability int
+
+	scanToolErr := tx.QueryRow(ctx, `
+	SELECT id::text, bonus_pct, durability
+	FROM user_items
+	WHERE user_id=$1
+	  AND item_type='tool'
+	  AND equipped=true
+	  AND listed=false
+	FOR UPDATE
+`, userID).Scan(&toolID, &toolBonusPct, &durability)
+
+	if scanToolErr == nil {
+		toolUsed = true
+		durability--
+
+		if durability <= 0 {
+			_, err = tx.Exec(ctx, `DELETE FROM user_items WHERE id=$1`, toolID)
+			if err != nil {
+				return
+			}
+		} else {
+			_, err = tx.Exec(ctx, `UPDATE user_items SET durability=$2 WHERE id=$1`, toolID, durability)
+			if err != nil {
+				return
+			}
+		}
+	} else if scanToolErr == pgx.ErrNoRows {
+		toolBonusPct = 0
+		toolUsed = false
+	} else {
+		err = scanToolErr
+		return
+	}
+
+	if amount > 0 && toolBonusPct > 0 {
+		amount = amount + (amount*toolBonusPct)/100
+	}
 
 	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
