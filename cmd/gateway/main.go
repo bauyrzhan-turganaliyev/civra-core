@@ -29,6 +29,9 @@ func main() {
 	mux.Handle("/economy/", http.StripPrefix("/economy", economy))
 	mux.Handle("/market/", http.StripPrefix("/market", market))
 
+	// Serve demo UI (static)
+	mux.Handle("/", http.FileServer(http.Dir("./ui")))
+
 	addr := ":" + cfg.Port
 	log.Printf("gateway listening on %s", addr)
 	log.Printf("proxy: kingdom=%s economy=%s market=%s", cfg.KingdomURL, cfg.EconomyURL, cfg.MarketURL)

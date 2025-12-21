@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Civra Demo UI</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="row between">
+      <div>
+        <h1>Civra – Demo UI</h1>
+        <div class="muted">Gateway: <span id="baseUrl">http://localhost:8080</span></div>
+      </div>
+      <div class="row gap">
+        <button id="refreshBtn">Refresh</button>
+        <button id="logoutBtn" class="danger">Logout</button>
+      </div>
+    </header>
+
+    <section id="loginCard" class="card">
+      <h2>Login (demo)</h2>
+      <p class="muted">No real auth. We just store <b>userId</b> locally to call APIs.</p>
+
+      <div class="grid2">
+        <label>
+          <div class="label">User ID</div>
+          <input id="userIdInput" placeholder="u1" />
+        </label>
+        <label>
+          <div class="label">Kingdom ID</div>
+          <input id="kingdomIdInput" placeholder="k1" />
+        </label>
+      </div>
+
+      <div class="row gap">
+        <button id="loginBtn">Login</button>
+        <button id="fillDemoBtn" class="secondary">Fill demo values</button>
+      </div>
+      <div id="loginErr" class="error"></div>
+    </section>
+
+    <section id="app" class="hidden">
+      <section class="grid2">
+        <div class="card">
+          <h2>Session</h2>
+          <div class="kv">
+            <div class="k">userId</div><div class="v" id="userIdView"></div>
+            <div class="k">kingdomId</div><div class="v" id="kingdomIdView"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Gather</h2>
+          <div class="grid2">
+            <label>
+              <div class="label">Profession</div>
+              <select id="profSelect">
+                <option value="farmer">farmer</option>
+                <option value="miner">miner</option>
+                <option value="lumber">lumber</option>
+              </select>
+            </label>
+            <label>
+              <div class="label">Amount</div>
+              <input id="gatherAmount" type="number" min="1" value="60" />
+            </label>
+          </div>
+
+          <div class="muted small">
+            Resource auto-mapped: farmer→food, miner→iron, lumber→wood
+          </div>
+
+          <div class="row gap">
+            <button id="gatherBtn">Gather</button>
+          </div>
+
+          <pre id="gatherOut" class="out"></pre>
+        </div>
+      </section>
+
+      <section class="grid2">
+        <div class="card">
+          <h2>Personal Inventory</h2>
+          <div id="personalInv" class="list"></div>
+        </div>
+        <div class="card">
+          <h2>Kingdom Inventory</h2>
+          <div id="kingdomInv" class="list"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row between">
+          <h2>Local Market</h2>
+          <div class="row gap">
+            <button id="reloadOrdersBtn" class="secondary">Reload orders</button>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <h3>Create Sell Order</h3>
+            <div class="grid2">
+              <label>
+                <div class="label">Resource</div>
+                <select id="sellRes">
+                  <option value="food">food</option>
+                  <option value="iron">iron</option>
+                  <option value="wood">wood</option>
+                </select>
+              </label>
+              <label>
+                <div class="label">Quantity</div>
+                <input id="sellQty" type="number" min="1" value="100" />
+              </label>
+              <label>
+                <div class="label">Price</div>
+                <input id="sellPrice" type="number" min="1" value="10" />
+              </label>
+            </div>
+            <div class="row gap">
+              <button id="sellBtn">Sell</button>
+            </div>
+            <pre id="sellOut" class="out"></pre>
+          </div>
+
+          <div>
+            <h3>Orders</h3>
+            <div id="orders" class="orders"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Last error</h2>
+        <div id="lastErr" class="error"></div>
+      </section>
+    </section>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
