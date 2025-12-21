@@ -30,10 +30,8 @@ func (s *PgStore) Gather(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// ✅ лучше передавать date как time.Time (Postgres сам возьмёт дату)
 	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
-	// 0) ensure quota row exists (race-safe)
 	_, err = tx.Exec(ctx,
 		`INSERT INTO quota_progress (user_id, day, resource, progress)
      VALUES ($1,$2,$3,0)
@@ -44,7 +42,6 @@ func (s *PgStore) Gather(
 		return
 	}
 
-	// 1) now lock and read
 	err = tx.QueryRow(ctx,
 		`SELECT progress FROM quota_progress
      WHERE user_id=$1 AND day=$2 AND resource=$3
@@ -84,7 +81,6 @@ func (s *PgStore) Gather(
 		}
 	}
 
-	// 2) обновляем quota + kingdom inventory
 	if toKingdom > 0 {
 		progress += toKingdom
 
@@ -126,7 +122,6 @@ func (s *PgStore) BuyOrder(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// 1) lock order
 	var resource string
 	var quantity int
 	err = tx.QueryRow(ctx,
@@ -139,7 +134,6 @@ func (s *PgStore) BuyOrder(
 		return err
 	}
 
-	// 2) give resource to buyer
 	_, err = tx.Exec(ctx,
 		`INSERT INTO personal_inventory (user_id, resource, quantity)
 		 VALUES ($1,$2,$3)
@@ -151,7 +145,6 @@ func (s *PgStore) BuyOrder(
 		return err
 	}
 
-	// 3) delete order
 	_, err = tx.Exec(ctx,
 		`DELETE FROM market_orders WHERE id=$1`,
 		orderID,

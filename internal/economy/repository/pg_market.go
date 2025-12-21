@@ -18,7 +18,6 @@ func (s *PgStore) CreateSellOrder(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// 1) lock seller inventory
 	var available int
 	err = tx.QueryRow(ctx,
 		`SELECT quantity FROM personal_inventory
@@ -34,7 +33,6 @@ func (s *PgStore) CreateSellOrder(
 		return uuid.Nil, ErrNotEnoughResource
 	}
 
-	// 2) subtract from seller
 	_, err = tx.Exec(ctx,
 		`UPDATE personal_inventory
 		 SET quantity = quantity - $3
@@ -47,7 +45,6 @@ func (s *PgStore) CreateSellOrder(
 
 	orderID := uuid.New()
 
-	// 3) insert order
 	_, err = tx.Exec(ctx,
 		`INSERT INTO market_orders
 		 (id, kingdom_id, seller_id, resource, quantity, price)

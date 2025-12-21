@@ -24,12 +24,10 @@ func main() {
 		httpx.JSON(w, 200, map[string]any{"service": "gateway", "ok": true})
 	})
 
-	// Proxy routes (через один вход)
 	mux.Handle("/kingdom/", http.StripPrefix("/kingdom", kingdom))
 	mux.Handle("/economy/", http.StripPrefix("/economy", economy))
 	mux.Handle("/market/", http.StripPrefix("/market", market))
 
-	// Serve demo UI (static)
 	mux.Handle("/", http.FileServer(http.Dir("./ui")))
 
 	addr := ":" + cfg.Port

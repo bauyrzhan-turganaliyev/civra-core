@@ -68,7 +68,6 @@ func (s *GatherService) Gather(
 		return GatherResult{}, ErrInvalidResourceForProfession
 	}
 
-	// ✅ atomic update happens inside repository (with mutex)
 	toKingdom, toPersonal, progress, err := s.store.Gather(
 		ctx,
 		userID,

@@ -94,7 +94,6 @@ func (h *MarketHandler) Orders(w http.ResponseWriter, r *http.Request) {
 
 	limit := 0
 	if v := r.URL.Query().Get("limit"); v != "" {
-		// простая парсилка
 		if n, err := strconv.Atoi(v); err == nil {
 			limit = n
 		}

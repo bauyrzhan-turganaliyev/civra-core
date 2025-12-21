@@ -44,7 +44,6 @@ func (s *MemoryStore) Gather(
 
 	date := now.Format("2006-01-02")
 
-	// init maps
 	if s.KingdomInventory[kingdomID] == nil {
 		s.KingdomInventory[kingdomID] = make(map[string]int)
 	}

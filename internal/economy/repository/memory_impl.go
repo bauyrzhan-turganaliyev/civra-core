@@ -2,7 +2,6 @@ package repository
 
 import "context"
 
-// InventoryQueryStore
 func (s *MemoryStore) GetKingdomInventory(ctx context.Context, kingdomID string) (map[string]int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -27,7 +26,6 @@ func (s *MemoryStore) GetPersonalInventory(ctx context.Context, userID string) (
 	return out, nil
 }
 
-// SetupStore
 func (s *MemoryStore) SetupDemo(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

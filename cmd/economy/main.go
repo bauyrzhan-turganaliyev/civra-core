@@ -35,7 +35,6 @@ func main() {
 
 	marketH := handler.NewMarketHandler(pg)
 
-	// ✅ register routes
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +50,6 @@ func main() {
 	mux.HandleFunc("/market/orders", marketH.Orders)
 	mux.HandleFunc("/market/cancel", marketH.Cancel)
 
-	// ✅ then start server
 	addr := ":" + cfg.Port
 	log.Printf("economy listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))

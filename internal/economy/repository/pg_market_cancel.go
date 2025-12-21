@@ -18,7 +18,6 @@ func (s *PgStore) CancelSellOrder(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// 1) lock order
 	var resource string
 	var quantity int
 	err = tx.QueryRow(ctx,
@@ -29,10 +28,9 @@ func (s *PgStore) CancelSellOrder(
 	).Scan(&resource, &quantity)
 
 	if err != nil {
-		return err // not found or not owner
+		return err
 	}
 
-	// 2) return resource to seller
 	_, err = tx.Exec(ctx,
 		`INSERT INTO personal_inventory (user_id, resource, quantity)
 		 VALUES ($1,$2,$3)
@@ -44,7 +42,6 @@ func (s *PgStore) CancelSellOrder(
 		return err
 	}
 
-	// 3) delete order
 	_, err = tx.Exec(ctx,
 		`DELETE FROM market_orders WHERE id=$1`,
 		orderID,
