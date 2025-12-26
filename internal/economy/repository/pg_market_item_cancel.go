@@ -2,16 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgStore) CancelItemSale(
-	ctx context.Context,
-	orderID uuid.UUID,
-	sellerID string,
-) error {
+var ErrCancelNotAllowed = errors.New("cancel not allowed")
 
+func (s *PgStore) CancelItemSale(ctx context.Context, orderID uuid.UUID, sellerID string) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -26,6 +25,9 @@ func (s *PgStore) CancelItemSale(
 		FOR UPDATE
 	`, orderID, sellerID).Scan(&itemID)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrCancelNotAllowed
+		}
 		return err
 	}
 
@@ -34,9 +36,7 @@ func (s *PgStore) CancelItemSale(
 		return err
 	}
 
-	_, err = tx.Exec(ctx, `
-		UPDATE user_items SET listed=false WHERE id=$1
-	`, itemID)
+	_, err = tx.Exec(ctx, `UPDATE user_items SET listed=false WHERE id=$1`, itemID)
 	if err != nil {
 		return err
 	}

@@ -2,30 +2,32 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type MarketItemOrder struct {
-	OrderID  uuid.UUID `json:"orderId"`
-	ItemID   uuid.UUID `json:"itemId"`
-	SellerID string    `json:"sellerId"`
-	Price    int       `json:"price"`
-	Tier     int       `json:"tier"`
-	Dur      int       `json:"durability"`
-	Bonus    int       `json:"bonusPct"`
+	OrderID   uuid.UUID `json:"orderId"`
+	KingdomID string    `json:"kingdomId"`
+	SellerID  string    `json:"sellerId"`
+	ItemID    uuid.UUID `json:"itemId"`
+	Price     int       `json:"price"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// snapshot from item
+	Tier       int `json:"tier"`
+	Durability int `json:"durability"`
+	MaxDur     int `json:"maxDurability"`
+	BonusPct   int `json:"bonusPct"`
 }
 
-func (s *PgStore) ListItemOrders(
-	ctx context.Context,
-	kingdomID string,
-) ([]MarketItemOrder, error) {
-
+func (s *PgStore) ListItemOrders(ctx context.Context, kingdomID string) ([]MarketItemOrder, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT o.id, i.id, o.seller_id, o.price,
-		       i.tier, i.durability, i.bonus_pct
+		SELECT o.id, o.kingdom_id, o.seller_id, o.item_id, o.price, o.created_at,
+		       i.tier, i.durability, i.max_durability, i.bonus_pct
 		FROM market_item_orders o
-		JOIN user_items i ON i.id=o.item_id
+		JOIN user_items i ON i.id = o.item_id
 		WHERE o.kingdom_id=$1
 		ORDER BY o.created_at DESC
 	`, kingdomID)
@@ -38,8 +40,8 @@ func (s *PgStore) ListItemOrders(
 	for rows.Next() {
 		var m MarketItemOrder
 		if err := rows.Scan(
-			&m.OrderID, &m.ItemID, &m.SellerID, &m.Price,
-			&m.Tier, &m.Dur, &m.Bonus,
+			&m.OrderID, &m.KingdomID, &m.SellerID, &m.ItemID, &m.Price, &m.CreatedAt,
+			&m.Tier, &m.Durability, &m.MaxDur, &m.BonusPct,
 		); err != nil {
 			return nil, err
 		}

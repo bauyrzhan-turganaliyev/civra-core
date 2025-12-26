@@ -5,14 +5,13 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
-func (s *PgStore) BuyItem(
-	ctx context.Context,
-	orderID uuid.UUID,
-	buyerID string,
-) error {
+var ErrItemOrderNotFound = errors.New("order not found")
+var ErrItemAlreadySold = errors.New("item already sold")
 
+func (s *PgStore) BuyItem(ctx context.Context, orderID uuid.UUID, buyerID string) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -27,6 +26,9 @@ func (s *PgStore) BuyItem(
 		FOR UPDATE
 	`, orderID).Scan(&itemID)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrItemOrderNotFound
+		}
 		return err
 	}
 
@@ -40,7 +42,7 @@ func (s *PgStore) BuyItem(
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return errors.New("item already sold")
+		return ErrItemAlreadySold
 	}
 
 	_, err = tx.Exec(ctx, `DELETE FROM market_item_orders WHERE id=$1`, orderID)

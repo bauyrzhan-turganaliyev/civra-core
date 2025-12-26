@@ -35,6 +35,7 @@ func main() {
 
 	marketH := handler.NewMarketHandler(pg)
 	itemsH := handler.NewItemsHandler(pg)
+	marketItemsH := handler.NewMarketItemsHandler(pg)
 
 	mux := http.NewServeMux()
 
@@ -53,6 +54,10 @@ func main() {
 	mux.HandleFunc("/items", itemsH.List)
 	mux.HandleFunc("/items/craft-tool", itemsH.CraftTool)
 	mux.HandleFunc("/items/equip", itemsH.Equip)
+	mux.HandleFunc("/market/items/sell", marketItemsH.Sell)
+	mux.HandleFunc("/market/items/orders", marketItemsH.Orders)
+	mux.HandleFunc("/market/items/buy", marketItemsH.Buy)
+	mux.HandleFunc("/market/items/cancel", marketItemsH.Cancel)
 
 	addr := ":" + cfg.Port
 	log.Printf("economy listening on %s", addr)

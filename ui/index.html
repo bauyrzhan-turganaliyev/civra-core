@@ -92,8 +92,39 @@
       </section>
 
       <section class="card">
+      <div class="row between">
+        <h2>Tools (Items)</h2>
+        <div class="row gap">
+          <button id="reloadItemsBtn" class="secondary">Reload items</button>
+        </div>
+      </div>
+
+      <div class="row gap" style="flex-wrap:wrap;">
+        <button id="craftT1Btn">Craft Tool T1</button>
+        <button id="craftT2Btn" class="secondary">Craft Tool T2</button>
+        <button id="craftT3Btn" class="secondary">Craft Tool T3</button>
+        <span class="muted small">Craft consumes iron+wood (tier-based). Equip gives bonus and durability decreases on gather.</span>
+      </div>
+
+      <div id="items" class="orders"></div>
+      <pre id="itemsOut" class="out"></pre>
+    </section>
+
+    <section class="card">
+      <div class="row between">
+        <h2>Market (Items)</h2>
+        <div class="row gap">
+          <button id="reloadItemOrdersBtn" class="secondary">Reload item orders</button>
+        </div>
+      </div>
+
+      <div id="itemOrders" class="orders"></div>
+    <pre id="itemOrdersOut" class="out"></pre>
+    </section>
+
+      <section class="card">
         <div class="row between">
-          <h2>Local Market</h2>
+          <h2>Resource Market</h2>
           <div class="row gap">
             <button id="reloadOrdersBtn" class="secondary">Reload orders</button>
           </div>

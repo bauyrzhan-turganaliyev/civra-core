@@ -129,6 +129,10 @@ async function refreshAll() {
   renderInv("personalInv", p.inventory || {});
   renderInv("kingdomInv", k.inventory || {});
   renderOrders(orders.orders || []);
+  await loadItems();
+  await loadItemOrders();
+
+
 }
 
 function showApp() {
@@ -236,6 +240,43 @@ function init() {
   el("gatherBtn").addEventListener("click", onGather);
   el("sellBtn").addEventListener("click", onSell);
 
+  el("reloadItemsBtn").addEventListener("click", () => loadItems().catch(e => setError(e.message)));
+
+  el("craftT1Btn").addEventListener("click", async () => {
+    try {
+      const out = await api("/economy/items/craft-tool", {
+        method: "POST",
+        body: JSON.stringify({ userId: state.userId, tier: 1 }),
+      });
+      el("itemsOut").textContent = JSON.stringify(out, null, 2);
+      await loadItems();
+    } catch (e) { setError(e.message || String(e)); }
+  });
+  el("craftT2Btn").addEventListener("click", async () => {
+    try {
+      const out = await api("/economy/items/craft-tool", {
+        method: "POST",
+        body: JSON.stringify({ userId: state.userId, tier: 2 }),
+      });
+      el("itemsOut").textContent = JSON.stringify(out, null, 2);
+      await loadItems();
+    } catch (e) { setError(e.message || String(e)); }
+  });
+  el("craftT3Btn").addEventListener("click", async () => {
+    try {
+      const out = await api("/economy/items/craft-tool", {
+        method: "POST",
+        body: JSON.stringify({ userId: state.userId, tier: 3 }),
+      });
+      el("itemsOut").textContent = JSON.stringify(out, null, 2);
+      await loadItems();
+    } catch (e) { setError(e.message || String(e)); }
+  });
+  el("reloadItemOrdersBtn").addEventListener("click", () =>
+  loadItemOrders().catch(e => setError(e.message || String(e)))
+);
+
+
   // auto session
   if (state.userId && state.kingdomId) {
     showApp();
@@ -244,5 +285,171 @@ function init() {
     showLogin();
   }
 }
+
+async function loadItems() {
+  const data = await api(`/economy/items?userId=${encodeURIComponent(state.userId)}`);
+  renderItems(data.items || []);
+}
+
+function renderItems(items) {
+  const root = el("items");
+  root.innerHTML = "";
+  if (!items.length) {
+    root.innerHTML = `<div class="muted">No items</div>`;
+    return;
+  }
+
+  for (const it of items) {
+    const div = document.createElement("div");
+    div.className = "order";
+    div.innerHTML = `
+      <div class="top">
+        <div class="id">${it.id}</div>
+        <div class="muted small">${new Date(it.createdAt).toLocaleString()}</div>
+      </div>
+      <div class="meta">
+        <div><b>type</b> ${it.itemType}</div>
+        <div><b>tier</b> ${it.tier}</div>
+        <div><b>dur</b> ${it.durability}/${it.maxDurability}</div>
+        <div><b>bonus</b> +${it.bonusPct}%</div>
+        <div><b>equipped</b> ${it.equipped ? "✅" : "—"}</div>
+        <div><b>listed</b> ${it.listed ? "🟠" : "—"}</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" data-equip="${it.id}" ${it.listed ? "disabled" : ""}>Equip</button>
+        <button class="danger" data-sell="${it.id}" ${it.equipped || it.listed ? "disabled" : ""}>Sell</button>
+      </div>
+    `;
+    root.appendChild(div);
+  }
+
+  root.querySelectorAll("[data-equip]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/economy/items/equip", {
+          method: "POST",
+          body: JSON.stringify({ userId: state.userId, itemId: btn.dataset.equip }),
+        });
+        await refreshAll();
+        await loadItems();
+      } catch (e) { setError(e.message || String(e)); }
+    });
+  });
+
+  root.querySelectorAll("[data-sell]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const priceStr = prompt("Price?");
+      const price = Number(priceStr || 0);
+      if (!price || price <= 0) return;
+
+      try {
+        await api("/economy/market/items/sell", {
+          method: "POST",
+          body: JSON.stringify({
+            kingdomId: state.kingdomId,
+            sellerId: state.userId,
+            itemId: btn.dataset.sell,
+            price,
+          }),
+        });
+        await loadItems();
+        await refreshAll(); // later we’ll load item orders too
+      } catch (e) { setError(e.message || String(e)); }
+    });
+  });
+
+  el("itemsOut").textContent = JSON.stringify(items, null, 2);
+}
+
+async function loadItemOrders() {
+  const data = await api(`/economy/market/items/orders?kingdomId=${encodeURIComponent(state.kingdomId)}`);
+  renderItemOrders(data.orders || []);
+}
+
+function renderItemOrders(orders) {
+  const root = el("itemOrders");
+  root.innerHTML = "";
+
+  if (!orders.length) {
+    root.innerHTML = `<div class="muted">No item orders</div>`;
+    el("itemOrdersOut").textContent = "[]";
+    return;
+  }
+
+  for (const o of orders) {
+    const isSeller = o.sellerId === state.userId;
+
+    const div = document.createElement("div");
+    div.className = "order";
+    div.innerHTML = `
+      <div class="top">
+        <div class="id">order: ${o.orderId}</div>
+        <div class="muted small">${new Date(o.createdAt).toLocaleString()}</div>
+      </div>
+
+      <div class="meta">
+        <div><b>seller</b> ${o.sellerId}</div>
+        <div><b>price</b> ${o.price}</div>
+        <div><b>item</b> ${o.itemId}</div>
+        <div><b>tier</b> ${o.tier}</div>
+        <div><b>dur</b> ${o.durability}/${o.maxDurability}</div>
+        <div><b>bonus</b> +${o.bonusPct}%</div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" data-buy="${o.orderId}" ${isSeller ? "disabled" : ""}>Buy</button>
+        <button class="danger" data-cancel="${o.orderId}" ${isSeller ? "" : "disabled"}>Cancel</button>
+      </div>
+    `;
+
+    root.appendChild(div);
+  }
+
+  // bind buy
+  root.querySelectorAll("[data-buy]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/economy/market/items/buy", {
+          method: "POST",
+          body: JSON.stringify({
+            orderId: btn.dataset.buy,
+            buyerId: state.userId,
+          }),
+        });
+        await loadItemOrders();
+        await loadItems(); // чтобы увидеть item у покупателя/исчезновение listed у продавца
+      } catch (e) {
+        setError(e.message || String(e));
+      }
+    });
+  });
+
+  // bind cancel
+  root.querySelectorAll("[data-cancel]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/economy/market/items/cancel", {
+          method: "POST",
+          body: JSON.stringify({
+            orderId: btn.dataset.cancel,
+            sellerId: state.userId,
+          }),
+        });
+        await loadItemOrders();
+        await loadItems(); // item снова станет listed=false
+      } catch (e) {
+        setError(e.message || String(e));
+      }
+    });
+  });
+
+  el("itemOrdersOut").textContent = JSON.stringify(orders, null, 2);
+}
+async function loadItemOrders() {
+  const data = await api(`/economy/market/items/orders?kingdomId=${encodeURIComponent(state.kingdomId)}`);
+  console.log("item orders data:", data);
+  renderItemOrders(data.orders || []);
+}
+
 
 init();
