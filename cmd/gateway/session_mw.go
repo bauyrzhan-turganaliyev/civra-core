@@ -21,7 +21,6 @@ func withSession(next http.Handler) http.Handler {
 				if json.Unmarshal(raw, &s) == nil {
 					ctx := context.WithValue(r.Context(), sessionKey, s)
 
-					// 👇 прокидываем дальше в микросервисы
 					r = r.WithContext(ctx)
 					r.Header.Set("X-User-Id", s.UserID)
 					r.Header.Set("X-Kingdom-Id", s.KingdomID)

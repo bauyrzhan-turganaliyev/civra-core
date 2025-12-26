@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"civra-core/internal/economy/repository"
 	"civra-core/internal/economy/service"
@@ -48,7 +47,7 @@ func (h *ItemsHandler) CraftTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	spec, ok := service.ToolSpecForUI(req.Tier) // см. ниже как сделать без экспорта лишнего
+	spec, ok := service.ToolSpecForUI(req.Tier)
 	if !ok {
 		httpx.JSON(w, 400, map[string]string{"error": "invalid tier"})
 		return
@@ -88,17 +87,4 @@ func (h *ItemsHandler) Equip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, 200, map[string]any{"ok": true})
-}
-
-// tiny helper for query ints (если захочешь позже)
-func qInt(r *http.Request, key string, def int) int {
-	v := r.URL.Query().Get(key)
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return def
-	}
-	return n
 }
