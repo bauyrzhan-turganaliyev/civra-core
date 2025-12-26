@@ -16,6 +16,7 @@ function setLoginError(msg) {
 async function api(path, opts = {}) {
   setError("");
   const res = await fetch(API_BASE + path, {
+     credentials: "same-origin",
     ...opts,
     headers: {
       "Content-Type": "application/json",
@@ -160,20 +161,24 @@ function clearSession() {
 async function onLogin() {
   const userId = el("userIdInput").value.trim();
   const kingdomId = el("kingdomIdInput").value.trim();
-  setLoginError("");
 
   if (!userId || !kingdomId) {
     setLoginError("userId and kingdomId are required");
     return;
   }
 
+  await api("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ userId, kingdomId }),
+  });
+
   state.userId = userId;
   state.kingdomId = kingdomId;
-  saveSession();
 
   showApp();
   await refreshAll();
 }
+
 
 async function onGather() {
   try {
@@ -229,10 +234,12 @@ function init() {
   });
 
   el("loginBtn").addEventListener("click", onLogin);
-  el("logoutBtn").addEventListener("click", () => {
-    clearSession();
-    showLogin();
-  });
+el("logoutBtn").addEventListener("click", async () => {
+  try { await api("/auth/logout", { method: "POST", body: "{}" }); } catch {}
+  clearSession();
+  showLogin();
+});
+
 
   el("refreshBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
   el("reloadOrdersBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
@@ -276,14 +283,18 @@ function init() {
   loadItemOrders().catch(e => setError(e.message || String(e)))
 );
 
-
-  // auto session
-  if (state.userId && state.kingdomId) {
-    showApp();
-    refreshAll().catch(e => setError(e.message));
-  } else {
-    showLogin();
-  }
+  (async () => {
+    try {
+      const me = await api("/auth/me");
+      state.userId = me.userId;
+      state.kingdomId = me.kingdomId;
+      saveSession();
+      showApp();
+      await refreshAll();
+    } catch {
+      showLogin();
+    }
+  })();
 }
 
 async function loadItems() {
