@@ -1,8 +1,5 @@
 # Civra — Distributed Programming Final Project Report
 
-**Author:** Bauyrzhan Turganaliyev  
-**Course:** B032427 (B335) — Distributed Programming for Web, IoT and Mobile Systems (2025–2026)
-
 ## 1. Project idea
 Civra is a browser-based MMO prototype where many players cooperate inside a kingdom. Players gather resources, fulfill a daily quota for the kingdom inventory, craft RPG-like tools with durability, and trade resources and items through a local market. A gateway provides a single entry point and manages lightweight sessions with HTTP-only cookies.
 
