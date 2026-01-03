@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -27,16 +26,27 @@ type GatherRequest struct {
 }
 
 func (h *GatherHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	var req GatherRequest
+	userID := r.Header.Get("X-User-Id")
+	kingdomID := r.Header.Get("X-Kingdom-Id")
+	if userID == "" || kingdomID == "" {
+		httpx.Err(w, 401, "no session")
+		return
+	}
+
+	var req struct {
+		Profession string `json:"profession"`
+		Resource   string `json:"resource"`
+		Amount     int    `json:"amount"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.Err(w, 400, "invalid json")
 		return
 	}
 
 	res, err := h.svc.Gather(
-		context.Background(),
-		req.UserID,
-		req.KingdomID,
+		r.Context(),
+		userID,
+		kingdomID,
 		entity.Profession(req.Profession),
 		entity.Resource(req.Resource),
 		req.Amount,

@@ -17,14 +17,16 @@ func NewInventoryQueryHandler(svc *service.InventoryQueryService) *InventoryQuer
 
 // GET /kingdom-inventory?kingdomId=k1
 func (h *InventoryQueryHandler) Kingdom(w http.ResponseWriter, r *http.Request) {
-	kingdomID := r.URL.Query().Get("kingdomId")
+	kingdomID := r.Header.Get("X-Kingdom-Id")
 	if kingdomID == "" {
-		httpx.Err(w, 400, "missing kingdomId")
+		httpx.Err(w, 401, "no session")
 		return
 	}
+
 	inv, err := h.svc.KingdomInventory(r.Context(), kingdomID)
 	if err != nil {
 		httpx.Err(w, 500, err.Error())
+		return
 	}
 
 	httpx.JSON(w, 200, map[string]any{
@@ -35,15 +37,18 @@ func (h *InventoryQueryHandler) Kingdom(w http.ResponseWriter, r *http.Request) 
 
 // GET /personal-inventory?userId=u1
 func (h *InventoryQueryHandler) Personal(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userId")
+	userID := r.Header.Get("X-User-Id")
 	if userID == "" {
-		httpx.Err(w, 400, "missing userId")
+		httpx.Err(w, 401, "no session")
 		return
 	}
+
 	inv, err := h.svc.PersonalInventory(r.Context(), userID)
 	if err != nil {
 		httpx.Err(w, 500, err.Error())
+		return
 	}
+
 	httpx.JSON(w, 200, map[string]any{
 		"userId":    userID,
 		"inventory": inv,

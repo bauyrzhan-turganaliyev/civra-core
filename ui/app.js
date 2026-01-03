@@ -2,8 +2,8 @@ const API_BASE = ""; // same origin (gateway serves UI)
 
 const el = (id) => document.getElementById(id);
 const state = {
-  userId: localStorage.getItem("civra.userId") || "",
-  kingdomId: localStorage.getItem("civra.kingdomId") || "",
+  userId: "",
+  kingdomId: "",
 };
 
 function setError(msg) {
@@ -95,7 +95,7 @@ function renderOrders(orders) {
       try {
         await api("/economy/market/buy", {
           method: "POST",
-          body: JSON.stringify({ orderId: btn.dataset.buy, buyerId: state.userId }),
+          body: JSON.stringify({ orderId: btn.dataset.buy }),
         });
         await refreshAll();
       } catch (e) { setError(String(e.message || e)); }
@@ -107,7 +107,7 @@ function renderOrders(orders) {
       try {
         await api("/economy/market/cancel", {
           method: "POST",
-          body: JSON.stringify({ orderId: btn.dataset.cancel, sellerId: state.userId }),
+          body: JSON.stringify({ orderId: btn.dataset.cancel}),
         });
         await refreshAll();
       } catch (e) { setError(String(e.message || e)); }
@@ -116,24 +116,33 @@ function renderOrders(orders) {
 }
 
 async function refreshAll() {
-  if (!state.userId || !state.kingdomId) return;
+  let me;
+  try {
+    me = await api("/auth/me");
+  } catch {
+    clearSessionUI();
+    showLogin();
+    return;
+  }
+
+  state.userId = me.userId;
+  state.kingdomId = me.kingdomId;
 
   el("userIdView").textContent = state.userId;
   el("kingdomIdView").textContent = state.kingdomId;
 
   const [p, k, orders] = await Promise.all([
-    api(`/economy/personal-inventory?userId=${encodeURIComponent(state.userId)}`),
-    api(`/economy/kingdom-inventory?kingdomId=${encodeURIComponent(state.kingdomId)}`),
-    api(`/economy/market/orders?kingdomId=${encodeURIComponent(state.kingdomId)}`),
+    api(`/economy/personal-inventory`),
+    api(`/economy/kingdom-inventory`),
+    api(`/economy/market/orders`),
   ]);
 
   renderInv("personalInv", p.inventory || {});
   renderInv("kingdomInv", k.inventory || {});
   renderOrders(orders.orders || []);
+
   await loadItems();
   await loadItemOrders();
-
-
 }
 
 function showApp() {
@@ -151,11 +160,11 @@ function saveSession() {
   localStorage.setItem("civra.kingdomId", state.kingdomId);
 }
 
-function clearSession() {
-  localStorage.removeItem("civra.userId");
-  localStorage.removeItem("civra.kingdomId");
+function clearSessionUI() {
   state.userId = "";
   state.kingdomId = "";
+  el("userIdView").textContent = "";
+  el("kingdomIdView").textContent = "";
 }
 
 async function onLogin() {
@@ -172,11 +181,14 @@ async function onLogin() {
     body: JSON.stringify({ userId, kingdomId }),
   });
 
-  state.userId = userId;
-  state.kingdomId = kingdomId;
-
   showApp();
   await refreshAll();
+}
+
+async function onLogout() {
+  try { await api("/auth/logout", { method: "POST", body: "{}" }); } catch {}
+  clearSessionUI();
+  showLogin();
 }
 
 
@@ -185,17 +197,14 @@ async function onGather() {
     const prof = el("profSelect").value;
     const res = profToResource(prof);
     const amount = Number(el("gatherAmount").value || 0);
-    const body = {
-      userId: state.userId,
-      kingdomId: state.kingdomId,
-      profession: prof,
-      resource: res,
-      amount,
-    };
 
     const out = await api("/economy/gather", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        profession: prof,
+        resource: res,
+        amount,
+      }),
     });
 
     el("gatherOut").textContent = JSON.stringify(out, null, 2);
@@ -207,17 +216,13 @@ async function onGather() {
 
 async function onSell() {
   try {
-    const body = {
-      kingdomId: state.kingdomId,
-      sellerId: state.userId,
-      resource: el("sellRes").value,
-      quantity: Number(el("sellQty").value || 0),
-      price: Number(el("sellPrice").value || 0),
-    };
-
     const out = await api("/economy/market/sell", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        resource: el("sellRes").value,
+        quantity: Number(el("sellQty").value || 0),
+        price: Number(el("sellPrice").value || 0),
+      }),
     });
 
     el("sellOut").textContent = JSON.stringify(out, null, 2);
@@ -227,78 +232,8 @@ async function onSell() {
   }
 }
 
-function init() {
-  el("fillDemoBtn").addEventListener("click", () => {
-    el("userIdInput").value = "u1";
-    el("kingdomIdInput").value = "k1";
-  });
-
-  el("loginBtn").addEventListener("click", onLogin);
-el("logoutBtn").addEventListener("click", async () => {
-  try { await api("/auth/logout", { method: "POST", body: "{}" }); } catch {}
-  clearSession();
-  showLogin();
-});
-
-
-  el("refreshBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
-  el("reloadOrdersBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
-
-  el("gatherBtn").addEventListener("click", onGather);
-  el("sellBtn").addEventListener("click", onSell);
-
-  el("reloadItemsBtn").addEventListener("click", () => loadItems().catch(e => setError(e.message)));
-
-  el("craftT1Btn").addEventListener("click", async () => {
-    try {
-      const out = await api("/economy/items/craft-tool", {
-        method: "POST",
-        body: JSON.stringify({ userId: state.userId, tier: 1 }),
-      });
-      el("itemsOut").textContent = JSON.stringify(out, null, 2);
-      await loadItems();
-    } catch (e) { setError(e.message || String(e)); }
-  });
-  el("craftT2Btn").addEventListener("click", async () => {
-    try {
-      const out = await api("/economy/items/craft-tool", {
-        method: "POST",
-        body: JSON.stringify({ userId: state.userId, tier: 2 }),
-      });
-      el("itemsOut").textContent = JSON.stringify(out, null, 2);
-      await loadItems();
-    } catch (e) { setError(e.message || String(e)); }
-  });
-  el("craftT3Btn").addEventListener("click", async () => {
-    try {
-      const out = await api("/economy/items/craft-tool", {
-        method: "POST",
-        body: JSON.stringify({ userId: state.userId, tier: 3 }),
-      });
-      el("itemsOut").textContent = JSON.stringify(out, null, 2);
-      await loadItems();
-    } catch (e) { setError(e.message || String(e)); }
-  });
-  el("reloadItemOrdersBtn").addEventListener("click", () =>
-  loadItemOrders().catch(e => setError(e.message || String(e)))
-);
-
-  (async () => {
-    try {
-      const me = await api("/auth/me");
-      state.userId = me.userId;
-      state.kingdomId = me.kingdomId;
-      saveSession();
-      showApp();
-      await refreshAll();
-    } catch {
-      showLogin();
-    }
-  })();
-}
-
 async function loadItems() {
-  const data = await api(`/economy/items?userId=${encodeURIComponent(state.userId)}`);
+  const data = await api(`/economy/items`);
   renderItems(data.items || []);
 }
 
@@ -339,7 +274,7 @@ function renderItems(items) {
       try {
         await api("/economy/items/equip", {
           method: "POST",
-          body: JSON.stringify({ userId: state.userId, itemId: btn.dataset.equip }),
+          body: JSON.stringify({ itemId: btn.dataset.equip }),
         });
         await refreshAll();
         await loadItems();
@@ -357,14 +292,12 @@ function renderItems(items) {
         await api("/economy/market/items/sell", {
           method: "POST",
           body: JSON.stringify({
-            kingdomId: state.kingdomId,
-            sellerId: state.userId,
             itemId: btn.dataset.sell,
             price,
           }),
         });
         await loadItems();
-        await refreshAll(); // later we’ll load item orders too
+        await refreshAll();
       } catch (e) { setError(e.message || String(e)); }
     });
   });
@@ -373,7 +306,8 @@ function renderItems(items) {
 }
 
 async function loadItemOrders() {
-  const data = await api(`/economy/market/items/orders?kingdomId=${encodeURIComponent(state.kingdomId)}`);
+  const data = await api(`/economy/market/items/orders`);
+  console.log("item orders data:", data);
   renderItemOrders(data.orders || []);
 }
 
@@ -416,38 +350,30 @@ function renderItemOrders(orders) {
     root.appendChild(div);
   }
 
-  // bind buy
   root.querySelectorAll("[data-buy]").forEach(btn => {
     btn.addEventListener("click", async () => {
       try {
         await api("/economy/market/items/buy", {
           method: "POST",
-          body: JSON.stringify({
-            orderId: btn.dataset.buy,
-            buyerId: state.userId,
-          }),
+          body: JSON.stringify({ orderId: btn.dataset.buy }),
         });
         await loadItemOrders();
-        await loadItems(); // чтобы увидеть item у покупателя/исчезновение listed у продавца
+        await loadItems();
       } catch (e) {
         setError(e.message || String(e));
       }
     });
   });
 
-  // bind cancel
   root.querySelectorAll("[data-cancel]").forEach(btn => {
     btn.addEventListener("click", async () => {
       try {
         await api("/economy/market/items/cancel", {
           method: "POST",
-          body: JSON.stringify({
-            orderId: btn.dataset.cancel,
-            sellerId: state.userId,
-          }),
+          body: JSON.stringify({ orderId: btn.dataset.cancel }),
         });
         await loadItemOrders();
-        await loadItems(); // item снова станет listed=false
+        await loadItems()
       } catch (e) {
         setError(e.message || String(e));
       }
@@ -460,6 +386,73 @@ async function loadItemOrders() {
   const data = await api(`/economy/market/items/orders?kingdomId=${encodeURIComponent(state.kingdomId)}`);
   console.log("item orders data:", data);
   renderItemOrders(data.orders || []);
+}
+
+function init() {
+  el("fillDemoBtn").addEventListener("click", () => {
+    el("userIdInput").value = "u1";
+    el("kingdomIdInput").value = "k1";
+  });
+
+  el("loginBtn").addEventListener("click", () => onLogin().catch(e => setLoginError(e.message || String(e))));
+  el("logoutBtn").addEventListener("click", () => onLogout().catch(() => {}));
+
+  el("refreshBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
+  el("reloadOrdersBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
+
+  el("gatherBtn").addEventListener("click", onGather);
+  el("sellBtn").addEventListener("click", onSell);
+
+  el("reloadItemsBtn").addEventListener("click", () => loadItems().catch(e => setError(e.message)));
+
+  el("craftT1Btn").addEventListener("click", async () => {
+    try {
+      const out = await api("/economy/items/craft-tool", {
+        method: "POST",
+        body: JSON.stringify({ tier: 1 }),
+      });
+      el("itemsOut").textContent = JSON.stringify(out, null, 2);
+      await loadItems();
+    } catch (e) { setError(e.message || String(e)); }
+  });
+
+  el("craftT2Btn").addEventListener("click", async () => {
+    try {
+      const out = await api("/economy/items/craft-tool", {
+        method: "POST",
+        body: JSON.stringify({ tier: 2 }),
+      });
+      el("itemsOut").textContent = JSON.stringify(out, null, 2);
+      await loadItems();
+    } catch (e) { setError(e.message || String(e)); }
+  });
+
+  el("craftT3Btn").addEventListener("click", async () => {
+    try {
+      const out = await api("/economy/items/craft-tool", {
+        method: "POST",
+        body: JSON.stringify({ tier: 3 }),
+      });
+      el("itemsOut").textContent = JSON.stringify(out, null, 2);
+      await loadItems();
+    } catch (e) { setError(e.message || String(e)); }
+  });
+
+  el("reloadItemOrdersBtn").addEventListener("click", () =>
+    loadItemOrders().catch(e => setError(e.message || String(e)))
+  );
+
+  (async () => {
+    try {
+      const me = await api("/auth/me");
+      state.userId = me.userId;
+      state.kingdomId = me.kingdomId;
+      showApp();
+      await refreshAll();
+    } catch {
+      showLogin();
+    }
+  })();
 }
 
 

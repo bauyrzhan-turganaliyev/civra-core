@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -14,17 +13,8 @@ import (
 	"civra-core/pkg/httpx"
 )
 
-type Session struct {
-	UserID    string `json:"userId"`
-	KingdomID string `json:"kingdomId"`
-}
-
 func main() {
 	cfg := config.LoadGateway()
-
-	kingdom := mustProxy(cfg.KingdomURL)
-	economy := mustProxy(cfg.EconomyURL)
-	market := mustProxy(cfg.MarketURL)
 
 	mux := http.NewServeMux()
 
@@ -39,6 +29,10 @@ func main() {
 	mux.HandleFunc("/auth/logout", handleLogout)
 
 	// proxies
+	kingdom := mustProxyWithSessionHeaders(cfg.KingdomURL)
+	economy := mustProxyWithSessionHeaders(cfg.EconomyURL)
+	market := mustProxyWithSessionHeaders(cfg.MarketURL)
+
 	mux.Handle("/kingdom/", http.StripPrefix("/kingdom", kingdom))
 	mux.Handle("/economy/", http.StripPrefix("/economy", economy))
 	mux.Handle("/market/", http.StripPrefix("/market", market))
@@ -57,64 +51,69 @@ func main() {
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
-	var s Session
-	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+	var req struct {
+		UserID    string `json:"userId"`
+		KingdomID string `json:"kingdomId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.JSON(w, 400, map[string]string{"error": "invalid json"})
 		return
 	}
-	if s.UserID == "" || s.KingdomID == "" {
+	if req.UserID == "" || req.KingdomID == "" {
 		httpx.JSON(w, 400, map[string]string{"error": "missing userId or kingdomId"})
 		return
 	}
 
-	raw, _ := json.Marshal(s)
-	val := base64.StdEncoding.EncodeToString(raw)
+	sess := Session{
+		UserID:    req.UserID,
+		KingdomID: req.KingdomID,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "civra_session",
-		Value:    val,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(24 * time.Hour),
-	})
+	if err := SetSessionCookie(w, sess); err != nil {
+		httpx.JSON(w, 500, map[string]string{"error": "failed to set session"})
+		return
+	}
 
 	httpx.JSON(w, 200, map[string]any{"ok": true})
 }
 
 func handleMe(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie("civra_session")
-	if err != nil || c.Value == "" {
+	sess, ok := GetSession(r)
+	if !ok {
 		httpx.JSON(w, 401, map[string]string{"error": "no session"})
 		return
 	}
-
-	raw, err := base64.StdEncoding.DecodeString(c.Value)
-	if err != nil {
-		httpx.JSON(w, 401, map[string]string{"error": "bad session"})
-		return
-	}
-
-	var s Session
-	if err := json.Unmarshal(raw, &s); err != nil || s.UserID == "" || s.KingdomID == "" {
-		httpx.JSON(w, 401, map[string]string{"error": "bad session"})
-		return
-	}
-
-	httpx.JSON(w, 200, s)
+	httpx.JSON(w, 200, sess)
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "civra_session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Unix(0, 0),
-		MaxAge:   -1,
-	})
+	ClearSessionCookie(w)
 	httpx.JSON(w, 200, map[string]any{"ok": true})
+}
+
+func mustProxyWithSessionHeaders(raw string) *httputil.ReverseProxy {
+	u, err := url.Parse(raw)
+	if err != nil {
+		panic(err)
+	}
+
+	p := httputil.NewSingleHostReverseProxy(u)
+	baseDirector := p.Director
+
+	p.Director = func(r *http.Request) {
+		baseDirector(r)
+
+		if sess, ok := GetSession(r); ok {
+			r.Header.Set("X-User-Id", sess.UserID)
+			r.Header.Set("X-Kingdom-Id", sess.KingdomID)
+		} else {
+			r.Header.Del("X-User-Id")
+			r.Header.Del("X-Kingdom-Id")
+		}
+	}
+
+	return p
 }
 
 func mustProxy(raw string) *httputil.ReverseProxy {

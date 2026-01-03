@@ -33,7 +33,18 @@ type CancelReq struct {
 }
 
 func (h *MarketHandler) Sell(w http.ResponseWriter, r *http.Request) {
-	var req SellReq
+	userID := r.Header.Get("X-User-Id")
+	kingdomID := r.Header.Get("X-Kingdom-Id")
+	if userID == "" || kingdomID == "" {
+		httpx.JSON(w, 401, map[string]string{"error": "no session"})
+		return
+	}
+
+	var req struct {
+		Resource string `json:"resource"`
+		Quantity int    `json:"quantity"`
+		Price    int    `json:"price"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.JSON(w, 400, map[string]string{"error": "invalid json"})
 		return
@@ -41,8 +52,8 @@ func (h *MarketHandler) Sell(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.store.CreateSellOrder(
 		r.Context(),
-		req.KingdomID,
-		req.SellerID,
+		kingdomID,
+		userID,
 		req.Resource,
 		req.Quantity,
 		req.Price,
@@ -65,7 +76,15 @@ type BuyReq struct {
 }
 
 func (h *MarketHandler) Buy(w http.ResponseWriter, r *http.Request) {
-	var req BuyReq
+	buyerID := r.Header.Get("X-User-Id")
+	if buyerID == "" {
+		httpx.JSON(w, 401, map[string]string{"error": "no session"})
+		return
+	}
+
+	var req struct {
+		OrderID string `json:"orderId"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.JSON(w, 400, map[string]string{"error": "invalid json"})
 		return
@@ -77,7 +96,7 @@ func (h *MarketHandler) Buy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.BuyOrder(r.Context(), id, req.BuyerID); err != nil {
+	if err := h.store.BuyOrder(r.Context(), id, buyerID); err != nil {
 		httpx.JSON(w, 404, map[string]string{"error": "order not found"})
 		return
 	}
@@ -86,9 +105,9 @@ func (h *MarketHandler) Buy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MarketHandler) Orders(w http.ResponseWriter, r *http.Request) {
-	kingdomID := r.URL.Query().Get("kingdomId")
+	kingdomID := r.Header.Get("X-Kingdom-Id")
 	if kingdomID == "" {
-		httpx.JSON(w, 400, map[string]string{"error": "missing kingdomId"})
+		httpx.JSON(w, 401, map[string]string{"error": "no session"})
 		return
 	}
 
@@ -113,7 +132,15 @@ func (h *MarketHandler) Orders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MarketHandler) Cancel(w http.ResponseWriter, r *http.Request) {
-	var req CancelReq
+	sellerID := r.Header.Get("X-User-Id")
+	if sellerID == "" {
+		httpx.JSON(w, 401, map[string]string{"error": "no session"})
+		return
+	}
+
+	var req struct {
+		OrderID string `json:"orderId"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.JSON(w, 400, map[string]string{"error": "invalid json"})
 		return
@@ -125,7 +152,7 @@ func (h *MarketHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.CancelSellOrder(r.Context(), id, req.SellerID); err != nil {
+	if err := h.store.CancelSellOrder(r.Context(), id, sellerID); err != nil {
 		httpx.JSON(w, 404, map[string]string{"error": "order not found or not owner"})
 		return
 	}
