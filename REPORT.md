@@ -34,7 +34,7 @@ Civra is a browser-based MMO prototype where many players cooperate inside a kin
 - Makefile for one-command run
 
 ## 4. Course topics covered (revised)
- - Distributed systems architecture
+ - Distributed systems architecture  
     The project is implemented as a set of independent services (gateway, economy, market, kingdom) communicating over the network. Each service has a clear responsibility and runs in its own container, reflecting the core principles of distributed systems.
  - RESTful web services
     All functionality is exposed through REST-style HTTP APIs using standard methods (GET, POST) and JSON payloads. Resources such as inventories, items, and market orders are modeled as web resources, following REST design principles.
