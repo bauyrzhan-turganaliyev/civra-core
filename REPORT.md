@@ -36,23 +36,23 @@ Civra is a browser-based MMO prototype where many players cooperate inside a kin
 ## 4. Course topics covered (revised)
  - Distributed systems architecture  
     The project is implemented as a set of independent services (gateway, economy, market, kingdom) communicating over the network. Each service has a clear responsibility and runs in its own container, reflecting the core principles of distributed systems.
- - RESTful web services
+ - RESTful web services  
     All functionality is exposed through REST-style HTTP APIs using standard methods (GET, POST) and JSON payloads. Resources such as inventories, items, and market orders are modeled as web resources, following REST design principles.
- - Communication mechanisms
+ - Communication mechanisms  
     Services communicate synchronously using HTTP request/response interactions. The gateway acts as a middleware component and a single entry point, abstracting internal service communication from the client.
- - Session management and middleware
+ - Session management and middleware  
     User sessions are managed at the gateway level using HTTP-only cookies. The gateway validates sessions and propagates user identity to downstream services, keeping backend services stateless with respect to authentication.
- - Data access and persistence
+ - Data access and persistence  
     Persistent state is stored in PostgreSQL and accessed through a repository layer. Database transactions are used to ensure consistency when modifying inventories, quotas, and market data, as discussed in the Accessing Data lecture.
- - Concurrency and synchronization
+ - Concurrency and synchronization  
     Concurrent operations (e.g., gathering resources or buying from the market) are handled using transactional database access and row-level locking. This guarantees correct synchronization when multiple users access shared data.
- - Broadcast and coordination concepts
+ - Broadcast and coordination concepts  
     Kingdom inventories and market orders represent shared state visible to all players in a kingdom, conceptually corresponding to broadcast-style dissemination of information within a distributed system.
- - Leader and coordination role
+ - Leader and coordination role  
     The gateway plays the role of a logical coordinator by centralizing authentication and request routing. While explicit leader election algorithms are not implemented, the design follows the coordinator-based model discussed in the course.
- - RPC-style service interaction
+ - RPC-style service interaction  
     Internal service communication follows an RPC-style model over REST, with clearly defined service interfaces. The architecture is compatible with gRPC-style communication as presented in the lectures.
- - Pervasive systems principles
+ - Pervasive systems principles  
     The system continuously reacts to user actions and context (daily quotas, equipped tools, durability), demonstrating autonomous and context-aware behavior typical of pervasive and distributed systems.
 
 ## 5. Use case (end-to-end)
