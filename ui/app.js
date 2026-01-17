@@ -16,7 +16,7 @@ function setLoginError(msg) {
 async function api(path, opts = {}) {
   setError("");
   const res = await fetch(API_BASE + path, {
-     credentials: "same-origin",
+     credentials: "include",
     ...opts,
     headers: {
       "Content-Type": "application/json",
@@ -155,11 +155,6 @@ function showLogin() {
   el("app").classList.add("hidden");
 }
 
-function saveSession() {
-  localStorage.setItem("civra.userId", state.userId);
-  localStorage.setItem("civra.kingdomId", state.kingdomId);
-}
-
 function clearSessionUI() {
   state.userId = "";
   state.kingdomId = "";
@@ -170,20 +165,26 @@ function clearSessionUI() {
 async function onLogin() {
   const userId = el("userIdInput").value.trim();
   const kingdomId = el("kingdomIdInput").value.trim();
+  setLoginError("");
 
   if (!userId || !kingdomId) {
     setLoginError("userId and kingdomId are required");
     return;
   }
 
-  await api("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ userId, kingdomId }),
-  });
+  try {
+    await api("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ userId, kingdomId }),
+    });
 
-  showApp();
-  await refreshAll();
+    showApp();
+    await refreshAll();
+  } catch (e) {
+    setLoginError(String(e.message || e));
+  }
 }
+
 
 async function onLogout() {
   try { await api("/auth/logout", { method: "POST", body: "{}" }); } catch {}
@@ -382,11 +383,6 @@ function renderItemOrders(orders) {
 
   el("itemOrdersOut").textContent = JSON.stringify(orders, null, 2);
 }
-async function loadItemOrders() {
-  const data = await api(`/economy/market/items/orders?kingdomId=${encodeURIComponent(state.kingdomId)}`);
-  console.log("item orders data:", data);
-  renderItemOrders(data.orders || []);
-}
 
 function init() {
   el("fillDemoBtn").addEventListener("click", () => {
@@ -395,7 +391,11 @@ function init() {
   });
 
   el("loginBtn").addEventListener("click", () => onLogin().catch(e => setLoginError(e.message || String(e))));
-  el("logoutBtn").addEventListener("click", () => onLogout().catch(() => {}));
+  el("logoutBtn").addEventListener("click", async () => {
+  try { await api("/auth/logout", { method:"POST" }); } catch {}
+  showLogin();
+});
+
 
   el("refreshBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));
   el("reloadOrdersBtn").addEventListener("click", () => refreshAll().catch(e => setError(e.message)));

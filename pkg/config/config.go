@@ -14,6 +14,7 @@ type GatewayConfig struct {
 	KingdomURL string
 	EconomyURL string
 	MarketURL  string
+	AuthSecret string
 }
 
 func getEnv(key, def string) string {
