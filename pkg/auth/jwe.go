@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -23,6 +24,9 @@ type JWE struct {
 }
 
 func NewJWE(secret []byte) (*JWE, error) {
+	if len(secret) != 32 {
+		return nil, fmt.Errorf("JWE secret must be 32 bytes for A256GCM, got %d", len(secret))
+	}
 	jwk := jose.JSONWebKey{
 		Key:       secret,
 		Algorithm: string(jose.DIRECT),

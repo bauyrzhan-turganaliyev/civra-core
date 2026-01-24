@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -22,7 +23,9 @@ type LoginReq struct {
 
 func main() {
 	cfg := config.LoadGateway()
-	jwe, err := auth.NewJWE([]byte(cfg.AuthSecret))
+	secret := os.Getenv("CIVRA_JWE_SECRET")
+	jwe, err := auth.NewJWE([]byte(secret))
+
 	if err != nil {
 		log.Fatal(err)
 	}

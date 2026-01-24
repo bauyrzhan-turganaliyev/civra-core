@@ -115,6 +115,52 @@ function renderOrders(orders) {
   });
 }
 
+async function loadLeaderboard() {
+  const data = await api(`/economy/leaderboard`);
+  renderLeaderboard(data);
+}
+
+function renderLeaderboard(data) {
+  const root = el("leaderboard");
+  root.innerHTML = "";
+
+  const leaders = data?.leaders || [];
+
+  if (!leaders.length) {
+    root.innerHTML = `<div class="muted">Empty</div>`;
+    el("leaderboardOut").textContent = JSON.stringify(data ?? {}, null, 2);
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th align="left">#</th>
+        <th align="left">userId</th>
+        <th align="left">score</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody");
+
+  leaders.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${r.userId}</td>
+      <td>${r.score}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  root.appendChild(table);
+  el("leaderboardOut").textContent = JSON.stringify(data, null, 2);
+}
+
 async function refreshAll() {
   let me;
   try {
@@ -141,6 +187,7 @@ async function refreshAll() {
   renderInv("kingdomInv", k.inventory || {});
   renderOrders(orders.orders || []);
 
+  await loadLeaderboard();
   await loadItems();
   await loadItemOrders();
 }
@@ -404,6 +451,10 @@ function init() {
   el("sellBtn").addEventListener("click", onSell);
 
   el("reloadItemsBtn").addEventListener("click", () => loadItems().catch(e => setError(e.message)));
+el("reloadLeaderboardBtn").addEventListener("click", () =>
+  loadLeaderboard().catch(e => setError(e.message || String(e)))
+);
+
 
   el("craftT1Btn").addEventListener("click", async () => {
     try {

@@ -9,8 +9,9 @@ services:
       KINGDOM_URL: "http://kingdom:8081"
       ECONOMY_URL: "http://economy:8082"
       MARKET_URL: "http://market:8083"
+      CIVRA_JWE_SECRET: "0123456789abcdef0123456789abcdef"
       CIVRA_SESSION_KEY_B64: "0lea060qMsW9rocomLHXAehFrZOswdbY6jPngeBwje4="
-      CIVRA_COOKIE_SECURE: ${CIVRA_COOKIE_SECURE:-false}
+      CIVRA_COOKIE_SECURE: "false"
     env_file:
       - .env
     ports:

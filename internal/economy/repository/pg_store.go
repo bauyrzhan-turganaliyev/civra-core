@@ -151,6 +151,20 @@ func (s *PgStore) Gather(
 		}
 	}
 
+	delta := toKingdom + toPersonal
+	if delta > 0 {
+		_, err = tx.Exec(ctx, `
+    INSERT INTO leaderboard (kingdom_id, user_id, score)
+    VALUES ($1,$2,$3)
+    ON CONFLICT (kingdom_id, user_id)
+    DO UPDATE SET score = leaderboard.score + EXCLUDED.score,
+                  updated_at = now()
+  `, kingdomID, userID, delta)
+		if err != nil {
+			return
+		}
+	}
+
 	err = tx.Commit(ctx)
 	return
 }
@@ -199,4 +213,40 @@ func (s *PgStore) BuyOrder(
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (s *PgStore) AddScore(ctx context.Context, kingdomID, userID string, delta int) error {
+	_, err := s.db.Exec(ctx, `
+    INSERT INTO leaderboard (kingdom_id, user_id, score)
+    VALUES ($1,$2,$3)
+    ON CONFLICT (kingdom_id, user_id)
+    DO UPDATE SET
+      score = leaderboard.score + EXCLUDED.score,
+      updated_at = now()
+  `, kingdomID, userID, delta)
+	return err
+}
+
+func (s *PgStore) TopLeaderboard(ctx context.Context, kingdomID string, limit int) ([]LeaderboardRow, error) {
+	rows, err := s.db.Query(ctx, `
+    SELECT user_id, score
+    FROM leaderboard
+    WHERE kingdom_id=$1
+    ORDER BY score DESC
+    LIMIT $2
+  `, kingdomID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []LeaderboardRow{}
+	for rows.Next() {
+		var r LeaderboardRow
+		if err := rows.Scan(&r.UserID, &r.Score); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }

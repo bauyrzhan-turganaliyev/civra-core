@@ -23,3 +23,13 @@ type InventoryQueryStore interface {
 type SetupStore interface {
 	SetupDemo(ctx context.Context) error
 }
+
+type LeaderboardStore interface {
+	AddScore(ctx context.Context, kingdomID, userID string, delta int) error
+	TopLeaderboard(ctx context.Context, kingdomID string, limit int) ([]LeaderboardRow, error)
+}
+
+type LeaderboardRow struct {
+	UserID string `json:"userId"`
+	Score  int64  `json:"score"`
+}

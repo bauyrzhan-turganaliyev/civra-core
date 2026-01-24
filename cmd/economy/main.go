@@ -37,6 +37,9 @@ func main() {
 	itemsH := handler.NewItemsHandler(pg)
 	marketItemsH := handler.NewMarketItemsHandler(pg)
 
+	leaderboardSvc := service.NewLeaderboardService(pg)
+	leaderboardH := handler.NewLeaderboardHandler(leaderboardSvc)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +61,7 @@ func main() {
 	mux.HandleFunc("/market/items/orders", marketItemsH.Orders)
 	mux.HandleFunc("/market/items/buy", marketItemsH.Buy)
 	mux.HandleFunc("/market/items/cancel", marketItemsH.Cancel)
+	mux.HandleFunc("/leaderboard", leaderboardH.Handle)
 
 	addr := ":" + cfg.Port
 	log.Printf("economy listening on %s", addr)
